@@ -1,0 +1,8 @@
+﻿  WindowsAPI_Lab.cpp
+c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(178): warning C4101: 'clientHeight': unreferenced local variable
+c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(178): warning C4101: 'clientWidth': unreferenced local variable
+c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'cyClient': unreferenced local variable
+c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'im': unreferenced local variable
+c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'cxClient': unreferenced local variable
+c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'ik': unreferenced local variable
+  WindowsAPI_Lab.vcxproj -> C:\Users\VickersZhu\source\repos\WindowsAPI_Lab\Debug\WindowsAPI_Lab.exe
