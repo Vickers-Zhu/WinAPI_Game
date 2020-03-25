@@ -4,9 +4,16 @@
 #include "pch.h"
 #include "framework.h"
 #include "WindowsAPI_Lab.h"
+#include "uxtheme.h"
+#include "dwmapi.h"
 #include <cstdlib>
 #include <time.h>
+#include <iostream>
+#include <cmath>
+
+
 using namespace std;
+
 #define MAX_LOADSTRING 100
 #define ID_FIRSTCHILD  100 
 #define ID_SECONDCHILD 101 
@@ -14,6 +21,12 @@ using namespace std;
 
 #define INITTIMER 11
 #define RUNNINGTIMER 12
+#define WM_SELECTED WM_USER+1
+#define WM_INITBOARD WM_USER+2
+#define WM_RUNNINGINTERVAL WM_USER+3
+#define WM_SELECTEDCELL WM_USER+4
+#define BINGO true
+#define NOBINGO false
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -43,7 +56,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_WINDOWSAPILAB, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
-	//RegisterChildClass(hInstance);
+	RegisterChildClass(hInstance);
 
     // Perform application initialization:
     if (!InitInstance (hInstance, nCmdShow))
@@ -149,7 +162,14 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 BOOL CALLBACK DestoryChildCallback(HWND hwnd, LPARAM lParam);
 void CreateChildren(HWND hWnd, HWND hwndRect[], int size, int row, int gap, int margin);
 void Debug(const int msg, TCHAR *buf, int bufSize);
+bool isNear(int pos, int another, int row);
 int getWindowLength(int margin, int gap, int size, int row);
+bool isTriple(int row, bool restart);
+bool isFinishedBoard(int row);
+void Bingo(int index1, int index2, int index3);
+void Drop(int row);
+static int board[144];
+static HDC hdc;
 
 
 //
@@ -175,15 +195,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	//Parent Window Elements
 	RECT rc;
 	int border, caption;
-	int clientWidth, clientHeight;
 	static HBRUSH hbrBkgnd = NULL;
 	//Childwindow elements
 	static HWND hwndRect[rowL * rowL];
-	int iw=0, ik, im, cxClient, cyClient;
 	//Control identifier
 	static bool isGameStarted = false;
 	static int color[rowL * rowL];
 	static int enumrator = 0;
+	static int swap[2];
+	static int row;
 
     switch (message)
     {
@@ -193,7 +213,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		TCHAR s[256];
 		_stprintf_s(s, 256, _T("BeWindowed 2020 a.k.a. Bejeweled in WinAPI"));
 		SetWindowText(hWnd, s);
-		CreateChildren(hWnd, hwndRect, sizeM, rowM, gap, margin);
 
 		GetWindowRect(hWnd, &rc);
 		border = GetSystemMetrics(SM_CYFRAME);
@@ -201,70 +220,99 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 		MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeM, rowM) + border * 4,
 			getWindowLength(margin, gap, sizeM, rowM) + border * 3 + caption * 2, TRUE);
+
+		CreateChildren(hWnd, hwndRect, sizeM, rowM, gap, margin);
+		row = rowM;
+
 	}
 	return 0;
 		break;
     case WM_COMMAND:
         {
-			switch (HIWORD(wParam))
-			{
-			case STN_CLICKED:
-			{	
-				int hwndId = LOWORD(wParam);
-				Debug(LOWORD(wParam), buf, bufSize);
-				SetWindowText(hWnd, buf);
+			//switch (HIWORD(wParam))
+			//{
+			//case STN_CLICKED:
+			//{	
+			//	int hwndId = LOWORD(wParam);
+			//	Debug(LOWORD(wParam), buf, bufSize);
+			//	SetWindowText(hWnd, buf);
 
-				HDC hdc = GetDC(hwndRect[hwndId]);
-				//DrawEdge();
-			}
-				break;
-			default:
-				break;
-			}
+			//	HDC hdc = GetDC(hwndRect[hwndId]);
+			//	//DrawEdge();
+			//}
+			//	break;
+			//default:
+			//	break;
+			//}
             int wmId = LOWORD(wParam);
             // Parse the menu selections:
             switch (wmId)
             {
 			case ID_BORDERSIZE_SMALL:
 			{
-				GetWindowRect(hWnd, &rc);
-				border = GetSystemMetrics(SM_CYFRAME);
-				caption = GetSystemMetrics(SM_CYCAPTION);
-				EnumChildWindows(hWnd, DestoryChildCallback, lParam);
-				CreateChildren(hWnd, hwndRect, sizeS, rowS, gap, margin);
-				MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeS, rowS) + border * 4,
-					getWindowLength(margin, gap, sizeS, rowS) + border * 3 + caption * 2, TRUE);
-
+				if (!isGameStarted) 
+				{
+					GetWindowRect(hWnd, &rc);
+					border = GetSystemMetrics(SM_CYFRAME);
+					caption = GetSystemMetrics(SM_CYCAPTION);
+					row = rowS;
+					EnumChildWindows(hWnd, DestoryChildCallback, lParam);
+					CreateChildren(hWnd, hwndRect, sizeS, row, gap, margin);
+					MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeS, row) + border * 4,
+						getWindowLength(margin, gap, sizeS, row) + border * 3 + caption * 2, TRUE);
+				}
 			}
 				break;
 			case ID_BORDERSIZE_MEDIUM:
 			{
-				GetWindowRect(hWnd, &rc);
-				border = GetSystemMetrics(SM_CYFRAME);
-				caption = GetSystemMetrics(SM_CYCAPTION);
-				EnumChildWindows(hWnd, DestoryChildCallback, lParam);
-				CreateChildren(hWnd, hwndRect, sizeM, rowM, gap, margin);
-				MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeM, rowM) + border * 4,
-					getWindowLength(margin, gap, sizeM, rowM) + border * 3 + caption * 2, TRUE);
+				if (!isGameStarted)
+				{
+					GetWindowRect(hWnd, &rc);
+					border = GetSystemMetrics(SM_CYFRAME);
+					caption = GetSystemMetrics(SM_CYCAPTION);
+					row = rowM;
+					EnumChildWindows(hWnd, DestoryChildCallback, lParam);
+					CreateChildren(hWnd, hwndRect, sizeM, row, gap, margin);
+					MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeM, row) + border * 4,
+						getWindowLength(margin, gap, sizeM, row) + border * 3 + caption * 2, TRUE);
+				}
 			}
 				break;
 			case ID_BORDERSIZE_BIG:
 			{
-				GetWindowRect(hWnd, &rc);
-				border = GetSystemMetrics(SM_CYFRAME);
-				caption = GetSystemMetrics(SM_CYCAPTION);
-				EnumChildWindows(hWnd, DestoryChildCallback, lParam);
-				CreateChildren(hWnd, hwndRect, sizeL, rowL, gap, margin);
-				MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeL, rowL) + border * 4,
-					getWindowLength(margin, gap, sizeL, rowL) + border * 3 + caption * 2, TRUE);
+				if (!isGameStarted) 
+				{
+					GetWindowRect(hWnd, &rc);
+					border = GetSystemMetrics(SM_CYFRAME);
+					caption = GetSystemMetrics(SM_CYCAPTION);
+					row = rowL;
+					EnumChildWindows(hWnd, DestoryChildCallback, lParam);
+					CreateChildren(hWnd, hwndRect, sizeL, row, gap, margin);
+					MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeL, row) + border * 4,
+						getWindowLength(margin, gap, sizeL, row) + border * 3 + caption * 2, TRUE);
+				}
 			}
 				break;
 			case IDM_NEWGAME:
 			{
+				srand(time(NULL));
+				if (isGameStarted)
+				{
+					isGameStarted = false;
+					KillTimer(hWnd, RUNNINGTIMER);
+					for (int i = 0; i < row*row; i++)
+						board[i] = rand() % 6 + 1;
+
+					SetTimer(hWnd, INITTIMER, 25, (TIMERPROC)NULL);
+				}
 				if (!isGameStarted) 
 				{
 					isGameStarted = true;
-					SetTimer(hWnd, INITTIMER, 50, (TIMERPROC)NULL);
+					//Initialize the board
+					for (int i = 0; i < row*row; i++)
+						board[i] = rand() % 6 + 1;
+
+					SetTimer(hWnd, INITTIMER, 25, (TIMERPROC)NULL);
 				}
 			}
 				break;
@@ -282,8 +330,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
+            hdc = BeginPaint(hWnd, &ps);
+            // TODO: Add any drawing code that uses hdc here..
 
 
 
@@ -291,50 +339,125 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             EndPaint(hWnd, &ps);
         }
         break;
-	case WM_CTLCOLORSTATIC:
-	{
-		HDC hdcStatic = (HDC)wParam;
-		SetTextColor(hdcStatic, RGB(0, 0, 0));
-		SetBkColor(hdcStatic, RGB(0, 123, 0));
-
-
-		if (GetDlgCtrlID((HWND)lParam) == 15)
-			hbrBkgnd = CreateSolidBrush(RGB(120, 120, 0));
-		else
-			hbrBkgnd = CreateSolidBrush((RGB(0, 0, 122)));
-		
-
-		return (INT_PTR)hbrBkgnd;
-	}
 	case WM_TIMER:
 	{
 		switch (wParam)
 		{
 		case INITTIMER:
 		{
-
 			//Paint the client area
-			if (hwndRect[enumrator] != NULL) 
-			{
-				//hbrBkgnd = CreateSolidBrush((RGB(255, 255, 255)));
-				//SetClassLongPtr(hwndRect[enumrator], GCLP_HBRBACKGROUND, (LONG_PTR)hbrBkgnd);
-
+			if (hwndRect[enumrator] != NULL) {
+				hdc = GetDC(hWnd);
+				GetClientRect(hWnd, &rc);
+				FillRect(hdc, &rc, (HBRUSH)COLOR_BACKGROUND + 2);
+				PostMessage(hwndRect[enumrator], WM_INITBOARD, board[enumrator], 0);		
 				enumrator++;
-
 			}
 			else 
 			{
-				enumrator = 0;
+				hdc = GetDC(hWnd);
+				GetClientRect(hWnd, &rc);
+				FillRect(hdc, &rc, (HBRUSH)COLOR_BACKGROUND + 1);
 				KillTimer(hWnd, INITTIMER);	
+				SetTimer(hWnd, RUNNINGTIMER, 800, (TIMERPROC)NULL);
+	
 			}
 			return 0;
 		}
-		break;
+			break;
+		case RUNNINGTIMER:
+		{
+			if (isGameStarted && !isFinishedBoard(row)) 
+			{
+				hdc = GetDC(hWnd);
+				GetClientRect(hWnd, &rc);
+				FillRect(hdc, &rc, (HBRUSH)COLOR_BACKGROUND + 2);
+				Drop(row);
+				SetWindowText(hWnd, _T("Droped!!"));
+				for (enumrator = 0; hwndRect[enumrator] != NULL; enumrator++)
+				{
+					PostMessage(hwndRect[enumrator], WM_RUNNINGINTERVAL, 0, 0);
+				}
+				return 0;
+			}
+			if (isGameStarted && isFinishedBoard(row) && isTriple(row, NOBINGO))
+			{	
+				hdc = GetDC(hWnd);
+				GetClientRect(hWnd, &rc);
+				FillRect(hdc, &rc, (HBRUSH)COLOR_BACKGROUND + 2);
+				isTriple(row, BINGO);
+				for (enumrator = 0; hwndRect[enumrator] != NULL; enumrator++)
+				{
+					PostMessage(hwndRect[enumrator], WM_RUNNINGINTERVAL, 0, 0);
+				}
+				SetWindowText(hWnd, _T("Bingoed"));
+				return 0;
+			}
+			SetWindowText(hWnd, _T("KillTimer"));
+			hdc = GetDC(hWnd);
+			GetClientRect(hWnd, &rc);
+			FillRect(hdc, &rc, (HBRUSH)COLOR_BACKGROUND + 1);
+			KillTimer(hWnd, RUNNINGTIMER);
+			
+		}
+			break;
 		default:
 			break;
 		}
 	}
 	break;
+	case WM_SELECTED:
+	{
+		if (isGameStarted && isFinishedBoard(row)) { 
+			int pos = wParam;
+			if (swap[0] == NULL || swap[0] == 0)
+			{
+				swap[0] = pos;
+				//_stprintf_s(buf, bufSize, _T("first swap[0] = %d, swap[1] = %d"), swap[0], swap[1]);
+				//SetWindowText(hWnd, buf);
+				PostMessage(hwndRect[swap[0]], WM_SELECTEDCELL, 0, 0);
+			}
+			else if (swap[1] == NULL || swap[1] == 0)
+			{
+				if (pos == swap[0]) //Diselected
+				{
+					swap[0] = pos;
+					swap[1] = 0;
+					PostMessage(hwndRect[swap[0]], WM_SELECTEDCELL, 0, 0);
+				}
+				swap[1] = pos;
+
+				if (!isNear(pos, swap[0], row))
+				{
+					swap[0] = pos;
+					swap[1] = 0;
+					PostMessage(hwndRect[swap[0]], WM_SELECTEDCELL, 0, 0);
+				}
+				else {
+					swap[1] = pos;
+					int temp = board[swap[0]];
+					board[swap[0]] = board[swap[1]];
+					board[swap[1]] = temp;
+					if (!isTriple(row, NOBINGO))
+					{
+						temp = board[swap[0]];
+						board[swap[0]] = board[swap[1]];
+						board[swap[1]] = temp;
+					}
+					PostMessage(hwndRect[swap[0]], WM_SELECTEDCELL, 0, 0);
+					for (enumrator = 0; hwndRect[enumrator] != NULL; enumrator++)
+					{
+						PostMessage(hwndRect[enumrator], WM_RUNNINGINTERVAL, 0, 0);
+					}
+					SetTimer(hWnd, RUNNINGTIMER, 800, (TIMERPROC)NULL);
+
+					swap[0] = 0;
+					swap[1] = 0;
+				}
+			}	
+		}	
+	}
+		break;
 	case WM_SIZE:
 	{
 
@@ -342,7 +465,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 
     case WM_DESTROY:
-		KillTimer(hWnd, INITTIMER);
+		//KillTimer(hWnd, INITTIMER);
         PostQuitMessage(0);
         break;
 
@@ -351,29 +474,99 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+
 LRESULT CALLBACK ChildProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	PAINTSTRUCT ps;
+	RECT rc;
+	HWND mainhWnd;
+	static int enumrator = 0;
+	static HWND oldBoardhWnd;
+	const static HBRUSH colors[6] =
+	{
+		CreateSolidBrush(RGB(255, 0, 0)),
+		CreateSolidBrush(RGB(0, 255, 0)),
+		CreateSolidBrush(RGB(0, 0, 255)),
+		CreateSolidBrush(RGB(255, 255, 0)),
+		CreateSolidBrush(RGB(0, 255, 255)),
+		CreateSolidBrush(RGB(255, 0, 255))
+	};
 	switch (message)
 	{
 	case WM_CREATE:
-
+	{
+	}
 		break;
+	case WM_PAINT:
+	{
+		hdc = BeginPaint(hWnd, &ps);
 
+
+		GetClientRect(hWnd, &rc);
+		HBRUSH bgColor = CreateHatchBrush(HS_CROSS, RGB(0, 0, 255));
+		FillRect(hdc, &rc, bgColor);
+
+		EndPaint(hWnd, &ps);
+	}
+		break;
 	case WM_SIZE:
+	{
 
+	}
+	break;
 
+	case WM_LBUTTONDOWN:
+	{
+		HWND mainhWnd = GetParent(hWnd);
+		PostMessage(mainhWnd, WM_SELECTED, GetDlgCtrlID(hWnd), 0);
+	}	
 		break;
+	case WM_SELECTEDCELL:
+	{
+		GetWindowRect(hWnd, &rc);
+		OffsetRect(&rc, -rc.left, -rc.top);
+		hdc = GetWindowDC(hWnd);
 
+		HRGN margin = CreateRoundRectRgn(rc.left, rc.top, rc.right, rc.bottom, 4, 4);
+		FrameRgn(hdc, margin, CreateSolidBrush(RGB(0, 0, 0)), 4, 4);
+		if (oldBoardhWnd != NULL) 
+		{
+			GetWindowRect(oldBoardhWnd, &rc);
+			OffsetRect(&rc, -rc.left, -rc.top);
+			hdc = GetWindowDC(oldBoardhWnd);
+			HRGN margin = CreateRoundRectRgn(rc.left, rc.top, rc.right, rc.bottom, 4, 4);
+			FrameRgn(hdc, margin, CreateSolidBrush(RGB(0, 0, 0)), 0, 0);
+		}
+		oldBoardhWnd = hWnd;
+		return 0;
+	}
+		break;
+	case WM_INITBOARD: 
+	{
+		hdc = GetDC(hWnd);
+		GetClientRect(hWnd, &rc);
+		FillRect(hdc, &rc, colors[wParam - 1]);
+	}
+		break;
+	case WM_RUNNINGINTERVAL:
+	{
+		enumrator = 0;
+
+		HWND mainhWnd = GetParent(hWnd);
+		hdc = GetDC(hWnd);
+		GetClientRect(hWnd, &rc);
+		TCHAR s[256];
+		//FillRect(hdc, &rc, colors[board[wParam]-1]);
+		_stprintf_s(s, 256, _T("%d"), board[GetDlgCtrlID(hWnd)]);
+		FillRect(hdc, &rc, colors[board[GetDlgCtrlID(hWnd)] - 1]);
+
+	}
+		break;
+	case WM_DESTROY:
+		break;
 
 	default:
-		HANDLE stdOut = GetStdHandle(STD_OUTPUT_HANDLE);
-		if (stdOut != NULL && stdOut != INVALID_HANDLE_VALUE)
-		{
-			DWORD written = 0;
-			const char *message = "hello world";
-			WriteConsoleA(stdOut, message, strlen(message), &written, NULL);
-		}
-			return DefWindowProc(hWnd, message, wParam, lParam);
+		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
 	return DefWindowProc(hWnd, message, wParam, lParam);
 }
@@ -429,6 +622,89 @@ void CreateChildren(HWND hWnd, HWND hwndRect[], int size, int row, int gap, int 
 				hInst,
 				NULL
 			);
+
+		}
+	}
+}
+
+bool isNear(int pos, int another, int row) 
+{
+	int abs = pos - another;
+	if (abs == 1 || abs == row || abs == -1 || abs == -row)
+		return true;
+	return false;
+}
+bool isTriple(int row, bool toBingo) 
+{
+	bool is = false;
+	for (int j = 0; j < row; j++) {
+		for (int i = 0; i < row - 2; i++) {
+			if (board[i + j * row] == board[(i + 1) + j * row] &&
+				board[(i + 1) + j * row] == board[(i + 2) + j * row] &&
+				board[i + j * row] == board[(i + 2) + j * row] && 
+				board[i + j * row] != 0 && 
+				board[i + 1 + j * row] != 0 && 
+				board[i + 2 + j * row] != 0)
+			{
+				if(toBingo)
+					Bingo(i+j*row, i+1+j*row, i+2+j*row);
+				is = true;
+			}
+		}
+		if (j < row - 2) 
+		{
+			for (int i = 0; i < row; i++) {
+				if (board[j*row + i] == board[j*row + row + i] &&
+					board[j*row + row + i] == board[j*row + row * 2 + i] &&
+					board[j*row + i] == board[j*row + row * 2 + i] &&
+					board[j*row + i] != 0 && 
+					board[j*row + row + i] != 0 && 
+					board[j*row + row * 2 + i] != 0)
+				{
+					if(toBingo)
+						Bingo(j*row+i, j*row+row+i, j*row+row*2+i);
+					is = true;
+				}
+			}
+		}
+	}
+	return is;
+}
+
+bool isFinishedBoard(int row) 
+{
+	for (int i = 0; i < row*row; i++) {
+		if (board[i] == 0)
+			return false;
+	}
+	return true;
+}
+
+void Bingo(int index1, int index2, int index3) 
+{
+	board[index1] = 0;
+	board[index2] = 0;
+	board[index3] = 0;
+}
+
+void Drop(int row) 
+{
+	srand(time(NULL));
+	bool finished_col[12];
+	for (int i = 0; i < row; i++)
+		finished_col[i] = false;
+	for (int i = row - 1; i >= 0; i--) {
+		for (int j = 0; j < row; j++) {
+			if (board[j + i * row] == 0 && !finished_col[j])
+			{	
+				int ir = i;
+				do
+				{
+					board[j + ir * row] = board[j + (ir - 1)*row];
+				} while (ir-- > 0);
+				board[j] = rand() % 6 + 1;
+				finished_col[j] = true;
+			}
 		}
 	}
 }

@@ -1,8 +1,6 @@
 ﻿  WindowsAPI_Lab.cpp
-c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(178): warning C4101: 'clientHeight': unreferenced local variable
-c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(178): warning C4101: 'clientWidth': unreferenced local variable
-c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'cyClient': unreferenced local variable
-c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'im': unreferenced local variable
-c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'cxClient': unreferenced local variable
-c:\users\vickerszhu\source\repos\windowsapi_lab\windowsapi_lab\windowsapi_lab.cpp(182): warning C4101: 'ik': unreferenced local variable
-  WindowsAPI_Lab.vcxproj -> C:\Users\VickersZhu\source\repos\WindowsAPI_Lab\Debug\WindowsAPI_Lab.exe
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(298): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(189): warning C4101: 'buf': unreferenced local variable
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(482): warning C4101: 'mainhWnd': unreferenced local variable
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(692): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+  WindowsAPI_Lab.vcxproj -> C:\Users\VickersZhu\Documents\GitHub\WinAPI_Game\Debug\WindowsAPI_Lab.exe
