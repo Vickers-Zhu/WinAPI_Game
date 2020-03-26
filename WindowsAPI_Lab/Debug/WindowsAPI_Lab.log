@@ -1,6 +1,7 @@
 ﻿  WindowsAPI_Lab.cpp
-c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(298): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
-c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(189): warning C4101: 'buf': unreferenced local variable
-c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(482): warning C4101: 'mainhWnd': unreferenced local variable
-c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(692): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(318): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(214): warning C4101: 'buf': unreferenced local variable
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(499): warning C4101: 'mainhWnd': unreferenced local variable
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(593): warning C4101: 'rc': unreferenced local variable
+c:\users\vickerszhu\documents\github\winapi_game\windowsapi_lab\windowsapi_lab.cpp(750): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
   WindowsAPI_Lab.vcxproj -> C:\Users\VickersZhu\Documents\GitHub\WinAPI_Game\Debug\WindowsAPI_Lab.exe

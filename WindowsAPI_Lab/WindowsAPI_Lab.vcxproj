@@ -170,6 +170,7 @@
     <ResourceCompile Include="WindowsAPI_Lab.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="bitmap1.bmp" />
     <Image Include="small.ico" />
     <Image Include="WindowsAPI_Lab.ico" />
   </ItemGroup>
