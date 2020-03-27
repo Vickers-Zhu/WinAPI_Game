@@ -10,6 +10,7 @@
 #include <time.h>
 #include <iostream>
 #include <cmath>
+#include <list>
 
 
 using namespace std;
@@ -21,11 +22,13 @@ using namespace std;
 
 #define INITTIMER 11
 #define RUNNINGTIMER 12
+#define PARTICLETIMER 13
 #define WM_SELECTED WM_USER+1
 #define WM_INITBOARD WM_USER+2
 #define WM_RUNNINGINTERVAL WM_USER+3
 #define WM_SELECTEDCELL WM_USER+4
 #define WM_INITOVERLAY WM_USER+5
+#define WM_BINGOTOPARTICLES WM_USER+6
 #define BINGO true
 #define NOBINGO false
 
@@ -193,7 +196,10 @@ bool isTriple(int row, bool restart);
 bool isFinishedBoard(int row);
 void Bingo(int index1, int index2, int index3);
 void Drop(int row);
+//void CreateParticles(list<POINT> pointsList, int rad, int row);
+//void MoveParticles(HWND hWnd, list<POINT> pointList, int rad, int row, int offset);
 static int board[144];
+static HWND hwndRect[12 * 12];
 static HDC hdc;
 
 
@@ -222,7 +228,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	int border, caption;
 	static HBRUSH hbrBkgnd = NULL;
 	//Childwindow elements
-	static HWND hwndRect[rowL * rowL];
 	static HWND hWndTop;
 	//Control identifier
 	static bool isGameStarted = false;
@@ -230,6 +235,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	static int enumrator = 0;
 	static int swap[2];
 	static int row;
+	static bool isComboSelected = false;
 
 	switch (message)
 	{
@@ -256,10 +262,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_INITOVERLAY:
 	{	
-		hWndTop = CreateWindowEx(WS_EX_LAYERED | WS_EX_TRANSPARENT,
+		hWndTop = CreateWindowEx(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOOLWINDOW,
 			TEXT("OVERLAY"), NULL, WS_POPUP | WS_VISIBLE, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
 			NULL, NULL, hInst, NULL);
-		SetLayeredWindowAttributes(hWndTop, 0xFEEDBEEF, 120, LWA_ALPHA);
+		SetLayeredWindowAttributes(hWndTop, 0xFEEDBEEF, 80, LWA_ALPHA);
+		SetWindowPos(hWndTop, HWND_TOPMOST, 0, 0, 
+			GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), 
+			SWP_NOOWNERZORDER);
 	}
 		break;
 	case WM_COMMAND:
@@ -402,6 +411,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 				GetClientRect(hWnd, &rc);
 				FillRect(hdc, &rc, (HBRUSH)COLOR_BACKGROUND + 2);
 				isTriple(row, BINGO);
+				PostMessage(hWndTop, WM_BINGOTOPARTICLES, row, 0);
 				for (enumrator = 0; hwndRect[enumrator] != NULL; enumrator++)
 				{
 					PostMessage(hwndRect[enumrator], WM_RUNNINGINTERVAL, 0, 0);
@@ -476,8 +486,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_SIZE:
 	{
-
-
 	}
 	break;
 
@@ -590,23 +598,18 @@ LRESULT CALLBACK ChildProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 
 LRESULT CALLBACK OverlayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 {
-	RECT rc;
+	static list<POINT> pointsList;
+	const static int rad = 5;
+	static bool NewExplosion = false;
+	static int row;
 	switch (message)
-	{
+	{ 
 
 	case WM_PAINT:
 	{
 		PAINTSTRUCT ps;
 		hdc = BeginPaint(hWnd, &ps);
 
-
-		EndPaint(hWnd, &ps);
-
-	}
-		break;
-	case WM_SIZE:
-	{
-		hdc = GetDC(hWnd);
 
 		TCHAR s[] = _T(" Hello world !");
 		HBITMAP bitmap = LoadBitmap(hInst,
@@ -620,9 +623,37 @@ LRESULT CALLBACK OverlayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 		DeleteObject(bitmap);
 		DeleteDC(memDC);
 
-	}
+		EndPaint(hWnd, &ps);
 
+	}
 		break;
+	case WM_SIZE:
+	{
+
+
+	}
+		break;
+	//case WM_BINGOTOPARTICLES:
+	//{
+	//	if(pointsList.empty())
+	//		SetTimer(hWnd, PARTICLETIMER, 15, NULL);
+	//	row = wParam;
+	//	CreateParticles(pointsList, rad, row);
+	//}
+	//	break;
+	//case WM_TIMER:
+	//	switch (wParam)
+	//	{
+	//	case PARTICLETIMER:
+	//	{
+	//		MoveParticles(hWnd, pointsList, rad, row, 5);
+	//		if (pointsList.empty())
+	//			KillTimer(hWnd, PARTICLETIMER);
+	//	}
+	//	default:
+	//		break;
+	//	}
+	//	break;
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
@@ -703,8 +734,23 @@ bool isTriple(int row, bool toBingo)
 				board[i + 1 + j * row] != 0 &&
 				board[i + 2 + j * row] != 0)
 			{
-				if (toBingo)
+				if (toBingo) {
+					int in = i;
+					while (--in >= 0) 
+					{
+						if (board[in + j * row] == board[i + j * row])
+							board[in + j * row] = 0;
+						else break;
+					}
+					in = i + 2;
+					while (++in < row)
+					{
+						if (board[in + j * row] == board[i + j * row])
+							board[in + j * row] = 0;
+						else break;
+					}
 					Bingo(i + j * row, i + 1 + j * row, i + 2 + j * row);
+				}
 				is = true;
 			}
 		}
@@ -718,8 +764,24 @@ bool isTriple(int row, bool toBingo)
 					board[j*row + row + i] != 0 &&
 					board[j*row + row * 2 + i] != 0)
 				{
-					if (toBingo)
+					if (toBingo) 
+					{
+						int jn = j;
+						while (--jn >= 0)
+						{
+							if (board[i + jn * row] == board[j*row + i])
+								board[i + jn * row] = 0;
+							else break;
+						}
+						jn = j + 2;
+						while (++jn < row)
+						{
+							if (board[i + jn * row] == board[j*row + i])
+								board[i + jn * row] = 0;
+							else break;
+						}
 						Bingo(j*row + i, j*row + row + i, j*row + row * 2 + i);
+					}
 					is = true;
 				}
 			}
@@ -765,6 +827,56 @@ void Drop(int row)
 		}
 	}
 }
+
+//void CreateParticles(list<POINT> pointsList, int rad, int row) 
+//{
+//	POINT pt;
+//	RECT rc;
+//	for(int i = 0; i < row*row; i++)
+//	{
+//		if (board[i] == 0) 
+//		{	
+//			GetWindowRect(hwndRect[i], &rc);
+//			pt.x = (rc.left + rc.right) / 2;
+//			pt.y = (rc.top + rc.bottom) / 2;
+//			pointsList.push_back(pt);
+//		}		
+//	}
+//}
+//void MoveParticles(HWND hWnd, list<POINT> pointsList, int rad, int row, int offset)
+//{
+//	hdc = GetDC(hWnd);
+//
+//	HBRUSH brushBk = CreateSolidBrush(COLOR_BACKGROUND + 2);
+//	HBRUSH oldBrushBk = (HBRUSH)SelectObject(hdc, &brushBk);
+//	list <POINT>::iterator iter = pointsList.begin();
+//	while (iter != pointsList.end())
+//	{
+//		POINT pt = *iter;//		Ellipse(hdc, pt.x - rad, pt.y - rad, pt.x + rad, pt.y + rad);
+//		*iter++;
+//	}
+//	SelectObject(hdc, oldBrushBk);
+//	DeleteObject(brushBk);
+//	HBRUSH brush = CreateSolidBrush(RGB(128, 128, 0));
+//	HBRUSH oldBrush = (HBRUSH)SelectObject(hdc, &brush);
+//	//UpdateLayeredWindow(hWnd, hdc, );
+//	iter = pointsList.begin();
+//	while (iter != pointsList.end())
+//	{
+//		POINT pt = *iter;//		pt.x = pt.x + offset;//		pt.y += pt.y + offset;//		list <POINT>::iterator lsave;//		if (pt.x > GetSystemMetrics(SM_CXSCREEN) || pt.x < 0 ||
+//			pt.y > GetSystemMetrics(SM_CYSCREEN) || pt.y < 0)
+//		{
+//			lsave = iter;
+//			pointsList.erase(lsave);
+//		}
+//		iter++;//		Ellipse(hdc, pt.x - rad, pt.y - rad, pt.x + rad, pt.y + rad);
+//
+//
+//	}
+//	SelectObject(hdc, oldBrush);
+//	DeleteObject(brush);
+//
+//}
 
 int getWindowLength(int margin, int gap, int size, int row)
 {
