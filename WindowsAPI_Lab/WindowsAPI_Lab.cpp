@@ -173,7 +173,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	hInst = hInstance; // Store instance handle in our global variable
 
 	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_CLIPCHILDREN | WS_BORDER
-		| WS_SYSMENU,
+		| WS_SYSMENU | WS_MINIMIZEBOX,
 		CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
 
@@ -279,47 +279,53 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 		case ID_BORDERSIZE_SMALL:
 		{
-			if (!isGameStarted)
-			{
-				GetWindowRect(hWnd, &rc);
-				border = GetSystemMetrics(SM_CYFRAME);
-				caption = GetSystemMetrics(SM_CYCAPTION);
-				row = rowS;
-				EnumChildWindows(hWnd, DestoryChildCallback, lParam);
-				CreateChildren(hWnd, hwndRect, sizeS, row, gap, margin);
-				MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeS, row) + border * 4,
-					getWindowLength(margin, gap, sizeS, row) + border * 3 + caption * 2, TRUE);
-			}
+
+			GetWindowRect(hWnd, &rc);
+			border = GetSystemMetrics(SM_CYFRAME);
+			caption = GetSystemMetrics(SM_CYCAPTION);
+			row = rowS;
+			EnumChildWindows(hWnd, DestoryChildCallback, lParam);
+			CreateChildren(hWnd, hwndRect, sizeS, row, gap, margin);
+			MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeS, row) + border * 4,
+				getWindowLength(margin, gap, sizeS, row) + border * 3 + caption * 2, TRUE);
+			isGameStarted = false;
+			KillTimer(hWnd, INITTIMER);
+			KillTimer(hWnd, RUNNINGTIMER);
+			
 		}
 		break;
 		case ID_BORDERSIZE_MEDIUM:
 		{
-			if (!isGameStarted)
-			{
-				GetWindowRect(hWnd, &rc);
-				border = GetSystemMetrics(SM_CYFRAME);
-				caption = GetSystemMetrics(SM_CYCAPTION);
-				row = rowM;
-				EnumChildWindows(hWnd, DestoryChildCallback, lParam);
-				CreateChildren(hWnd, hwndRect, sizeM, row, gap, margin);
-				MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeM, row) + border * 4,
-					getWindowLength(margin, gap, sizeM, row) + border * 3 + caption * 2, TRUE);
-			}
+
+			
+			GetWindowRect(hWnd, &rc);
+			border = GetSystemMetrics(SM_CYFRAME);
+			caption = GetSystemMetrics(SM_CYCAPTION);
+			row = rowM;
+			EnumChildWindows(hWnd, DestoryChildCallback, lParam);
+			CreateChildren(hWnd, hwndRect, sizeM, row, gap, margin);
+			MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeM, row) + border * 4,
+				getWindowLength(margin, gap, sizeM, row) + border * 3 + caption * 2, TRUE);
+			isGameStarted = false;
+			KillTimer(hWnd, INITTIMER);
+			KillTimer(hWnd, RUNNINGTIMER);
+			
 		}
 		break;
 		case ID_BORDERSIZE_BIG:
 		{
-			if (!isGameStarted)
-			{
-				GetWindowRect(hWnd, &rc);
-				border = GetSystemMetrics(SM_CYFRAME);
-				caption = GetSystemMetrics(SM_CYCAPTION);
-				row = rowL;
-				EnumChildWindows(hWnd, DestoryChildCallback, lParam);
-				CreateChildren(hWnd, hwndRect, sizeL, row, gap, margin);
-				MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeL, row) + border * 4,
-					getWindowLength(margin, gap, sizeL, row) + border * 3 + caption * 2, TRUE);
-			}
+			GetWindowRect(hWnd, &rc);
+			border = GetSystemMetrics(SM_CYFRAME);
+			caption = GetSystemMetrics(SM_CYCAPTION);
+			row = rowL;
+			EnumChildWindows(hWnd, DestoryChildCallback, lParam);
+			CreateChildren(hWnd, hwndRect, sizeL, row, gap, margin);
+			MoveWindow(hWnd, rc.left, rc.top, getWindowLength(margin, gap, sizeL, row) + border * 4,
+				getWindowLength(margin, gap, sizeL, row) + border * 3 + caption * 2, TRUE);
+			isGameStarted = false;
+			KillTimer(hWnd, INITTIMER);
+			KillTimer(hWnd, RUNNINGTIMER);
+			
 		}
 		break;
 		case IDM_NEWGAME:
@@ -327,7 +333,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			srand(time(NULL));
 			if (isGameStarted)
 			{
-				isGameStarted = false;
 				KillTimer(hWnd, RUNNINGTIMER);
 				for (int i = 0; i < row*row; i++)
 					board[i] = rand() % 6 + 1;
@@ -486,6 +491,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	break;
 	case WM_SIZE:
 	{
+		if (wParam == SIZE_MINIMIZED) 
+		{
+			PostMessage(hWndTop, WM_SYSCOMMAND, SC_MINIMIZE, 0);
+		}
+		if (wParam == SIZE_RESTORED)
+		{
+			PostMessage(hWndTop, WM_SYSCOMMAND, SC_MAXIMIZE, 0);
+			SetWindowPos(hWndTop, HWND_TOPMOST, 0, 0,
+				GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN),
+				SWP_NOOWNERZORDER);
+		}
 	}
 	break;
 
@@ -507,6 +523,7 @@ LRESULT CALLBACK ChildProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	HWND mainhWnd;
 	static int enumrator = 0;
 	static HWND oldBoardhWnd;
+	static bool isGameShowing = false;
 	const static HBRUSH colors[6] =
 	{
 		CreateSolidBrush(RGB(255, 0, 0)),
@@ -530,6 +547,8 @@ LRESULT CALLBACK ChildProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 		GetClientRect(hWnd, &rc);
 		//HBRUSH bgColor = CreateHatchBrush(HS_CROSS, RGB(0, 0, 255));
 		FillRect(hdc, &rc, (HBRUSH)COLOR_BACKGROUND+3);
+		if (isGameShowing) 
+			FillRect(hdc, &rc, colors[board[GetDlgCtrlID(hWnd)] - 1]);
 
 		EndPaint(hWnd, &ps);
 	}
@@ -568,6 +587,7 @@ LRESULT CALLBACK ChildProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	break;
 	case WM_INITBOARD:
 	{
+		isGameShowing = true;
 		hdc = GetDC(hWnd);
 		GetClientRect(hWnd, &rc);
 		FillRect(hdc, &rc, colors[wParam - 1]);
@@ -575,8 +595,8 @@ LRESULT CALLBACK ChildProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 	break;
 	case WM_RUNNINGINTERVAL:
 	{
+		isGameShowing = true;
 		enumrator = 0;
-
 		HWND mainhWnd = GetParent(hWnd);
 		hdc = GetDC(hWnd);
 		GetClientRect(hWnd, &rc);
@@ -609,19 +629,6 @@ LRESULT CALLBACK OverlayProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 	{
 		PAINTSTRUCT ps;
 		hdc = BeginPaint(hWnd, &ps);
-
-
-		TCHAR s[] = _T(" Hello world !");
-		HBITMAP bitmap = LoadBitmap(hInst,
-			MAKEINTRESOURCE(IDB_BITMAP1));
-		HDC memDC = CreateCompatibleDC(hdc);
-		HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, bitmap);
-		BitBlt(hdc, 0, 0, 48, 48, memDC, 0, 0, SRCCOPY);
-		StretchBlt(hdc, 200, 100, -200, 100, memDC,
-			0, 0, 48, 48, SRCCOPY);
-		SelectObject(memDC, oldBitmap);
-		DeleteObject(bitmap);
-		DeleteDC(memDC);
 
 		EndPaint(hWnd, &ps);
 
